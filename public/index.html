@@ -99,24 +99,45 @@
         }
 
         .loading {
-            text-align: center;
+            background: white;
+            border-radius: 15px;
             padding: 40px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
             display: none;
         }
 
-        .spinner {
-            border: 4px solid #f3f3f3;
-            border-top: 4px solid #667eea;
-            border-radius: 50%;
-            width: 50px;
-            height: 50px;
-            animation: spin 1s linear infinite;
+        .progress-container {
+            position: relative;
+            width: 200px;
+            height: 200px;
             margin: 0 auto 20px;
         }
 
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+        .progress-ring {
+            transform: rotate(-90deg);
+        }
+
+        .progress-ring-circle {
+            stroke-dasharray: 565.48;
+            stroke-dashoffset: 565.48;
+            transition: stroke-dashoffset 0.3s;
+        }
+
+        .progress-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 2.5em;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .loading-message {
+            color: #666;
+            font-size: 1.1em;
+            margin-top: 10px;
         }
 
         .results {
@@ -135,6 +156,12 @@
         .stats h3 {
             color: #667eea;
             font-size: 1.5em;
+        }
+
+        .stats-detail {
+            color: #666;
+            margin-top: 10px;
+            font-size: 0.95em;
         }
 
         .company-grid {
@@ -196,6 +223,15 @@
             font-weight: 500;
         }
 
+        .score-badge {
+            background: #ffd700;
+            color: #333;
+            padding: 3px 10px;
+            border-radius: 15px;
+            font-size: 0.8em;
+            font-weight: bold;
+        }
+
         .detail-link {
             display: inline-block;
             color: #667eea;
@@ -245,8 +281,21 @@
         </div>
 
         <div class="loading" id="loading">
-            <div class="spinner"></div>
-            <p style="color: white; font-size: 1.2em;">Firmalar taranıyor...</p>
+            <div class="progress-container">
+                <svg class="progress-ring" width="200" height="200">
+                    <circle
+                        class="progress-ring-circle"
+                        stroke="#667eea"
+                        stroke-width="8"
+                        fill="transparent"
+                        r="90"
+                        cx="100"
+                        cy="100"
+                    />
+                </svg>
+                <div class="progress-text" id="progressText">0%</div>
+            </div>
+            <div class="loading-message" id="loadingMessage">Başlatılıyor...</div>
         </div>
 
         <div class="results" id="results">
@@ -264,6 +313,19 @@
             if (e.key === 'Enter') searchCompanies();
         });
 
+        function updateProgress(percent, message) {
+            const circle = document.querySelector('.progress-ring-circle');
+            const text = document.getElementById('progressText');
+            const msg = document.getElementById('loadingMessage');
+            
+            const circumference = 2 * Math.PI * 90;
+            const offset = circumference - (percent / 100) * circumference;
+            
+            circle.style.strokeDashoffset = offset;
+            text.textContent = percent + '%';
+            msg.textContent = message;
+        }
+
         async function searchCompanies() {
             const keywords = document.getElementById('keywords').value.trim();
             
@@ -276,6 +338,13 @@
             document.getElementById('results').style.display = 'none';
             document.getElementById('searchBtn').disabled = true;
 
+            // Progress simülasyonu
+            updateProgress(0, 'Bağlantı kuruluyor...');
+            
+            setTimeout(() => updateProgress(25, 'Sayfa yükleniyor...'), 200);
+            setTimeout(() => updateProgress(50, 'Firmalar analiz ediliyor...'), 600);
+            setTimeout(() => updateProgress(75, 'Eşleşmeler bulunuyor...'), 1000);
+
             try {
                 const response = await fetch('/api/scrape', {
                     method: 'POST',
@@ -285,15 +354,20 @@
 
                 const data = await response.json();
 
-                document.getElementById('loading').style.display = 'none';
-                document.getElementById('results').style.display = 'block';
-                document.getElementById('searchBtn').disabled = false;
+                updateProgress(100, 'Tamamlandı! ✓');
 
-                if (data.success) {
-                    displayResults(data);
-                } else {
-                    alert('Hata: ' + data.error);
-                }
+                setTimeout(() => {
+                    document.getElementById('loading').style.display = 'none';
+                    document.getElementById('results').style.display = 'block';
+                    document.getElementById('searchBtn').disabled = false;
+
+                    if (data.success) {
+                        displayResults(data);
+                    } else {
+                        alert('Hata: ' + data.error);
+                    }
+                }, 500);
+
             } catch (error) {
                 document.getElementById('loading').style.display = 'none';
                 document.getElementById('searchBtn').disabled = false;
@@ -302,9 +376,14 @@
         }
 
         function displayResults(data) {
-            document.getElementById('stats').innerHTML = `
+            const statsHtml = `
                 <h3>📊 ${data.eslesenFirma} firma bulundu (Toplam ${data.toplamFirma} firmadan)</h3>
+                <div class="stats-detail">
+                    ${data.cached ? '⚡ Önbellekten yüklendi' : '🔄 Yeni veri çekildi'} 
+                    • Süre: ${data.sure}
+                </div>
             `;
+            document.getElementById('stats').innerHTML = statsHtml;
 
             const grid = document.getElementById('companyGrid');
             const noResults = document.getElementById('noResults');
@@ -323,13 +402,16 @@
                 const card = document.createElement('div');
                 card.className = 'company-card';
                 card.innerHTML = `
-                    <img src="${firma.logo}" alt="${firma.isim}" class="company-logo">
-                    <div class="company-name">${firma.isim}</div>
+                    ${firma.logo ? `<img src="${firma.logo}" alt="${firma.isim}" class="company-logo">` : ''}
+                    <div class="company-name">
+                        ${firma.isim}
+                        ${firma.eslesmeSkoru > 1 ? `<span class="score-badge">⭐ ${firma.eslesmeSkoru} eşleşme</span>` : ''}
+                    </div>
                     <div class="company-desc">${firma.aciklama}</div>
                     <div class="keywords">
                         ${firma.eslesenKelimeler.map(k => `<span class="keyword-tag">🏷️ ${k}</span>`).join('')}
                     </div>
-                    <a href="${firma.detayLink}" target="_blank" class="detail-link">Detaylı Bilgi →</a>
+                    ${firma.detayLink ? `<a href="${firma.detayLink}" target="_blank" class="detail-link">Detaylı Bilgi →</a>` : ''}
                 `;
                 grid.appendChild(card);
             });
