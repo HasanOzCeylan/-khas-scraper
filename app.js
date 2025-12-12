@@ -1,6 +1,10 @@
+// ============================================
+// YENİ server.js (Cheerio ile)
+// ============================================
+
 const express = require('express');
-const puppeteer = require('puppeteer-core');
-const chromium = require('chrome-aws-lambda');
+const axios = require('axios');
+const cheerio = require('cheerio');
 const cors = require('cors');
 const path = require('path');
 
@@ -27,62 +31,49 @@ app.post('/api/scrape', async (req, res) => {
     });
   }
 
-  let browser = null;
-
   try {
     console.log('Scraping başlatılıyor:', keywords);
     
-    browser = await puppeteer.launch({
-      args: chromium.args,
-      defaultViewport: chromium.defaultViewport,
-      executablePath: await chromium.executablePath,
-      headless: chromium.headless,
-      ignoreHTTPSErrors: true,
-    });
-    
-    const page = await browser.newPage();
-    
-    await page.goto('https://khasteknopark.com.tr/firmalar/', {
-      waitUntil: 'networkidle2',
-      timeout: 30000
+    // Axios ile HTML'i çek
+    const { data } = await axios.get('https://khasteknopark.com.tr/firmalar/', {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+      },
+      timeout: 15000
     });
 
-    // Firma bilgilerini çek
-    const firmalar = await page.evaluate(() => {
-      const firmaColumns = document.querySelectorAll('.elementor-column[data-settings*="background"]');
-      const results = [];
+    // Cheerio ile parse et
+    const $ = cheerio.load(data);
+    const firmalar = [];
 
-      firmaColumns.forEach(column => {
-        const isimElement = column.querySelector('h6.elementor-heading-title');
-        const isim = isimElement ? isimElement.textContent.trim() : '';
+    // Firma bilgilerini çek (aynı selector'lar)
+    $('.elementor-column[data-settings*="background"]').each((index, element) => {
+      const $column = $(element);
+      
+      const isimElement = $column.find('h6.elementor-heading-title');
+      const isim = isimElement.text().trim();
 
-        const aciklamaElement = column.querySelector('.elementor-widget-text-editor p');
-        const aciklama = aciklamaElement ? aciklamaElement.textContent.trim() : '';
+      const aciklamaElement = $column.find('.elementor-widget-text-editor p');
+      const aciklama = aciklamaElement.text().trim();
 
-        const linkElement = column.querySelector('.elementor-button-link');
-        const detayLink = linkElement ? linkElement.href : '';
+      const linkElement = $column.find('.elementor-button-link');
+      const detayLink = linkElement.attr('href') || '';
 
-        const logoElement = column.querySelector('img');
-        const logo = logoElement ? logoElement.src : '';
+      const logoElement = $column.find('img');
+      const logo = logoElement.attr('src') || '';
 
-        if (isim) {
-          results.push({
-            isim,
-            aciklama,
-            detayLink,
-            logo,
-            tumMetin: `${isim} ${aciklama}`.toLowerCase()
-          });
-        }
-      });
-
-      return results;
+      if (isim) {
+        firmalar.push({
+          isim,
+          aciklama,
+          detayLink,
+          logo,
+          tumMetin: `${isim} ${aciklama}`.toLowerCase()
+        });
+      }
     });
 
-    await browser.close();
-    browser = null;
-
-    // Keyword eşleştirme
+    // Keyword eşleştirme (tamamen aynı)
     const keywordList = keywords.toLowerCase().split(',').map(k => k.trim()).filter(k => k);
     const eslesenFirmalar = [];
 
@@ -117,11 +108,6 @@ app.post('/api/scrape', async (req, res) => {
 
   } catch (error) {
     console.error('Scraping hatası:', error);
-    
-    if (browser) {
-      await browser.close();
-    }
-    
     res.status(500).json({ 
       success: false, 
       error: error.message 
@@ -129,12 +115,10 @@ app.post('/api/scrape', async (req, res) => {
   }
 });
 
-// Local development
+// Production ve development için
 const PORT = process.env.PORT || 3000;
-if (process.env.NODE_ENV !== 'production') {
-  app.listen(PORT, () => {
-    console.log(`🚀 Server çalışıyor: http://localhost:${PORT}`);
-  });
-}
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`🚀 Server çalışıyor: http://localhost:${PORT}`);
+});
 
 module.exports = app;
