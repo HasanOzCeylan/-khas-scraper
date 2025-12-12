@@ -1,4 +1,15 @@
 {
+  "name": "khas-scraper",
+  "version": "1.0.0",
+  "description": "KHAS Teknopark Firma Arama",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js",
+    "build": "npx puppeteer browsers install chrome"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
   "dependencies": {
     "cors": "^2.8.5",
     "express": "^5.2.1",
