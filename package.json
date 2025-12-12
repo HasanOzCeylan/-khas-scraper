@@ -4,8 +4,7 @@
   "description": "KHAS Teknopark Firma Arama",
   "main": "app.js",
   "scripts": {
-    "start": "node app.js",
-    "build": "npx puppeteer browsers install chrome"
+    "start": "node app.js"
   },
   "keywords": [],
   "author": "",
@@ -13,6 +12,6 @@
   "dependencies": {
     "cors": "^2.8.5",
     "express": "^5.2.1",
-    "puppeteer": "^24.33.0"
+    "playwright": "^1.40.0"
   }
 }
