@@ -1,11 +1,12 @@
 const express = require('express');
 const puppeteer = require('puppeteer');
 const cors = require('cors');
+const path = require('path');
 
 const app = express();
 app.use(cors());
 app.use(express.json());
-app.use(express.static('public'));
+app.use(express.static(path.join(__dirname, 'public')));
 
 let browser = null;
 
@@ -19,6 +20,11 @@ async function initBrowser() {
   }
   return browser;
 }
+
+// Ana sayfa route'u
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
 
 // Scraping endpoint
 app.post('/api/scrape', async (req, res) => {
@@ -114,9 +120,9 @@ app.post('/api/scrape', async (req, res) => {
   }
 });
 
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(`🚀 Server http://localhost:${PORT} adresinde çalışıyor`);
+  console.log(`🚀 Server çalışıyor`);
 });
 
 // Uygulama kapanırken browser'ı kapat
