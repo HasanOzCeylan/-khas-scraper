@@ -1,5 +1,5 @@
 const express = require('express');
-const puppeteer = require('puppeteer');
+const { chromium } = require('playwright');
 const cors = require('cors');
 const path = require('path');
 
@@ -13,15 +13,9 @@ let browser = null;
 // Browser'ı başlat
 async function initBrowser() {
   if (!browser) {
-    browser = await puppeteer.launch({ 
+    browser = await chromium.launch({
       headless: true,
-      args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--disable-dev-shm-usage',
-        '--disable-accelerated-2d-canvas',
-        '--disable-gpu'
-      ]
+      args: ['--no-sandbox', '--disable-setuid-sandbox']
     });
   }
   return browser;
@@ -46,7 +40,7 @@ app.post('/api/scrape', async (req, res) => {
     const page = await b.newPage();
     
     await page.goto('https://khasteknopark.com.tr/firmalar/', {
-      waitUntil: 'networkidle2',
+      waitUntil: 'networkidle',
       timeout: 30000
     });
 
@@ -136,4 +130,3 @@ process.on('SIGINT', async () => {
   if (browser) await browser.close();
   process.exit();
 });
-
