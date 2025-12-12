@@ -137,4 +137,3 @@ process.on('SIGINT', async () => {
   if (browser) await browser.close();
   process.exit();
 });
-
