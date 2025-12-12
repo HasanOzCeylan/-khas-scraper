@@ -1,5 +1,6 @@
 const express = require('express');
-const puppeteer = require('puppeteer');
+const puppeteer = require('puppeteer-core');
+const chromium = require('chrome-aws-lambda');
 const cors = require('cors');
 const path = require('path');
 
@@ -26,17 +27,17 @@ app.post('/api/scrape', async (req, res) => {
     });
   }
 
+  let browser = null;
+
   try {
     console.log('Scraping başlatılıyor:', keywords);
     
-    const browser = await puppeteer.launch({ 
-      headless: true,
-      args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--disable-dev-shm-usage',
-        '--disable-gpu'
-      ]
+    browser = await puppeteer.launch({
+      args: chromium.args,
+      defaultViewport: chromium.defaultViewport,
+      executablePath: await chromium.executablePath,
+      headless: chromium.headless,
+      ignoreHTTPSErrors: true,
     });
     
     const page = await browser.newPage();
@@ -79,6 +80,7 @@ app.post('/api/scrape', async (req, res) => {
     });
 
     await browser.close();
+    browser = null;
 
     // Keyword eşleştirme
     const keywordList = keywords.toLowerCase().split(',').map(k => k.trim()).filter(k => k);
@@ -115,6 +117,11 @@ app.post('/api/scrape', async (req, res) => {
 
   } catch (error) {
     console.error('Scraping hatası:', error);
+    
+    if (browser) {
+      await browser.close();
+    }
+    
     res.status(500).json({ 
       success: false, 
       error: error.message 
