@@ -21,8 +21,7 @@ async function initBrowser() {
         '--disable-dev-shm-usage',
         '--disable-accelerated-2d-canvas',
         '--disable-gpu'
-      ],
-      executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/chromium-browser'
+      ]
     });
   }
   return browser;
@@ -137,3 +136,4 @@ process.on('SIGINT', async () => {
   if (browser) await browser.close();
   process.exit();
 });
+
