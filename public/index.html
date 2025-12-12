@@ -277,7 +277,7 @@
             document.getElementById('searchBtn').disabled = true;
 
             try {
-                const response = await fetch('http://localhost:3000/api/scrape', {
+                const response = await fetch('/api/scrape', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ keywords })
